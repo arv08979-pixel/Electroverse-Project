@@ -138,7 +138,23 @@ def live_encrypt():
                 print(f"Error processing {file}: {e}")
 
         time.sleep(SCAN_INTERVAL)
+# # --- SCRIPT 2 MODIFICATIONS ---
+# import requests  # Add this at the top
 
+# # Add this helper function inside script 2
+# def send_to_flask(encrypted_file_path, plate_list):
+#     url = "http://127.0.0.1:5000/upload"
+#     with open(encrypted_file_path, 'rb') as f:
+#         files = {'video': f}
+#         data = {
+#             'camera_id': 'CAM_67',
+#             'plates': json.dumps(plate_list) # Convert list to string for transport
+#         }
+#         try:
+#             response = requests.post(url, files=files, data=data)
+#             return response.json()
+#         except Exception as e:
+#             print(f"Upload failed: {e}")
 
 if __name__ == "__main__":
     live_encrypt()
