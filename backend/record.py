@@ -6,7 +6,7 @@ FRAME_WIDTH = 640
 FRAME_HEIGHT = 480
 FPS = 20
 CODEC = 'XVID'     
-OUTPUT_FILE = "motion_recording.avi"
+OUTPUT_FILE = "motion_recording.mp4"
 
 MOTION_THRESHOLD = 5000    
 RECORD_SECONDS_AFTER_MOTION = 5
