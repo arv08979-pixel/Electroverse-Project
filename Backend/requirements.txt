@@ -1,0 +1,6 @@
+flask
+pymongo
+pyjwt
+bcrypt
+pycryptodome
+opencv-python

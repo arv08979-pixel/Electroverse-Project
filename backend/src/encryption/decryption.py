@@ -6,12 +6,14 @@ from datetime import datetime
 from Crypto.Cipher import AES
 
 
-ENC_FOLDER = r"E:\Clubs and other things\electroverse\encryption\data\encrypted"
-OUTPUT_FOLDER = r"E:\Clubs and other things\electroverse\encryption\data\decrypted"
-KEY_PATH = r"E:\Clubs and other things\electroverse\encryption\configs\secret.key"
+ENC_FOLDER = os.environ.get("EV_ENC_FOLDER") or os.path.join(os.path.dirname(__file__), "data", "encrypted")
+OUTPUT_FOLDER = os.environ.get("EV_DEC_OUT") or os.path.join(os.path.dirname(__file__), "data", "decrypted")
+KEY_PATH = os.environ.get("EV_KEY_PATH") or os.path.join(os.path.dirname(__file__), "configs", "secret.key")
 
 
 def load_key():
+    if not os.path.exists(KEY_PATH):
+        raise FileNotFoundError(f"Key not found: {KEY_PATH}")
     with open(KEY_PATH, "rb") as f:
         return f.read()
 
@@ -119,6 +121,7 @@ def append_video(writer, video_bytes):
 def decrypt_container(path, key):
 
     name = os.path.basename(path)
+    os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     output_path = os.path.join(
         OUTPUT_FOLDER,
         name.replace(".WattLagGyi", ".mp4")
@@ -190,6 +193,63 @@ def process_all():
             os.path.join(ENC_FOLDER, file),
             key
         )
+
+
+def decrypt_blob_to_path(blob_bytes, key):
+    """Attempt to decrypt a blob that may be either:
+    - a simple AES-EAX blob (nonce[16] + tag[16] + ciphertext)
+    - or a container format produced by the original encrypt script
+    Returns path to temporary .mp4 file or None on failure.
+    """
+    from io import BytesIO
+
+    b = BytesIO(blob_bytes)
+
+    # Try simple format first
+    try:
+        b.seek(0)
+        # read first 16 + 16
+        nonce = b.read(16)
+        tag = b.read(16)
+        ciphertext = b.read()
+        if len(nonce) == 16 and len(tag) == 16 and len(ciphertext) > 0:
+            cipher = AES.new(key, AES.MODE_EAX, nonce=nonce)
+            plaintext = cipher.decrypt_and_verify(ciphertext, tag)
+
+            # Write plaintext to temp mp4 and return path
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            tmp.write(plaintext)
+            tmp.flush()
+            tmp.close()
+            return tmp.name
+    except Exception:
+        pass
+
+    # Fallback: try container parsing using existing logic
+    try:
+        # write temp container with the expected container suffix so decrypt_container
+        # will generate an output filename with .mp4
+        tmp_container = tempfile.NamedTemporaryFile(delete=False, suffix='.WattLagGyi')
+        tmp_container.write(blob_bytes)
+        tmp_container.flush()
+        tmp_container.close()
+
+        # ensure output dir exists
+        os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+
+        # reuse decrypt_container logic by writing container to a temp file and running decrypt_container
+        decrypt_container(tmp_container.name, key)
+
+        # The decrypt_container writes to OUTPUT_FOLDER; find produced mp4
+        base = os.path.basename(tmp_container.name)
+        expected = base.replace('.WattLagGyi', '.mp4')
+        out_path = os.path.join(OUTPUT_FOLDER, expected)
+        if os.path.exists(out_path):
+            return out_path
+    except Exception:
+        pass
+
+    return None
 
 
 if __name__ == "__main__":

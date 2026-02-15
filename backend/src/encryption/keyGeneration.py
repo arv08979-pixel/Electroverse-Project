@@ -1,25 +1,19 @@
-from Crypto.Random import get_random_bytes
 import os
+from Crypto.Random import get_random_bytes
 
-path = r"E:\Clubs and other things\electroverse\encryption\configs"
+BASE_DIR = os.path.dirname(__file__)
+CONFIG_DIR = os.path.join(BASE_DIR, "configs")
+KEY_PATH = os.path.join(CONFIG_DIR, "secret.key")
 
+def load_key():
+    if not os.path.exists(KEY_PATH):
+        os.makedirs(CONFIG_DIR, exist_ok=True)
 
-print("Target path:", path)
-print("Path exists before:", os.path.exists(path))
+        key = get_random_bytes(32)
+        with open(KEY_PATH, "wb") as f:
+            f.write(key)
 
+        return key
 
-os.makedirs(path, exist_ok=True)
-
-print("Path exists after:", os.path.exists(path))
-
-
-key = get_random_bytes(32)
-print("Key length:", len(key))
-
-file_path = os.path.join(path, "secret.key")
-print("Saving to:", file_path)
-
-with open(file_path, "wb") as f:
-    f.write(key)
-
-print("Done.")
+    with open(KEY_PATH, "rb") as f:
+        return f.read()

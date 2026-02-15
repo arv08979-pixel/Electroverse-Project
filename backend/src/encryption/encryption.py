@@ -6,16 +6,19 @@ from datetime import datetime
 from Crypto.Cipher import AES
 
 
-RAW_FOLDER = r"E:\Clubs and other things\electroverse\encryption\data\raw_buffer"
-OUT_FOLDER = r"E:\Clubs and other things\electroverse\encryption\data\encrypted"
-KEY_PATH = r"E:\Clubs and other things\electroverse\encryption\configs\secret.key"
+RAW_FOLDER = os.environ.get("EV_RAW_FOLDER") or os.path.join(os.path.dirname(__file__), "data", "raw_buffer")
+OUT_FOLDER = os.environ.get("EV_OUT_FOLDER") or os.path.join(os.path.dirname(__file__), "data", "encrypted")
+KEY_PATH = os.environ.get("EV_KEY_PATH") or os.path.join(os.path.dirname(__file__), "configs", "secret.key")
 
-SCAN_INTERVAL = 10
-MAX_CONTAINER_DURATION = 15
-CHUNK_DURATION = 3
+SCAN_INTERVAL = int(os.environ.get("EV_SCAN_INTERVAL", 10))
+MAX_CONTAINER_DURATION = int(os.environ.get("EV_MAX_CONTAINER_DURATION", 15))
+CHUNK_DURATION = int(os.environ.get("EV_CHUNK_DURATION", 3))
 
 
 def load_key():
+    if not os.path.exists(KEY_PATH):
+        raise FileNotFoundError(f"Encryption key not found at {KEY_PATH}")
+
     with open(KEY_PATH, "rb") as f:
         return f.read()
 
@@ -34,6 +37,9 @@ def wait_for_stable_file(path, wait=3):
 
 def create_new_container():
 
+
+    os.makedirs(OUT_FOLDER, exist_ok=True) 
+    
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     uid = uuid.uuid4().hex[:8]
 
@@ -84,6 +90,13 @@ def encrypt_chunk_blob(file_path, key):
         tag +
         ciphertext
     )
+
+
+def encrypt_bytes_whole(data_bytes, key):
+    """Encrypt arbitrary bytes with AES-EAX and return nonce+tag+ciphertext."""
+    cipher = AES.new(key, AES.MODE_EAX)
+    ciphertext, tag = cipher.encrypt_and_digest(data_bytes)
+    return cipher.nonce + tag + ciphertext
 
 
 def live_encrypt():
